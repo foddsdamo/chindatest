@@ -38,14 +38,23 @@ export const fetchHotpotBases = async (): Promise<GoogleSheetsHotpotBase[]> => {
     const data = await response.json();
     const rows = data.values || [];
     
-    // Skip header row
-    return rows.slice(1).map((row: string[]) => ({
+    console.log('📊 从Google Sheets读取到的锅底数据:', rows);
+    
+    // Skip header row and filter active bases
+    const allBases = rows.slice(1).map((row: string[]) => ({
       id: row[0] || '',
       name_th: row[1] || '',
       name_zh: row[2] || '',
       name_en: row[3] || '',
       active: row[4] === 'TRUE' || row[4] === 'true'
-    })).filter((base: GoogleSheetsHotpotBase) => base.active);
+    }));
+    
+    const activeBases = allBases.filter((base: GoogleSheetsHotpotBase) => base.active);
+    
+    console.log('✅ 活跃的锅底数量:', activeBases.length);
+    console.log('📋 活跃的锅底列表:', activeBases.map((b: GoogleSheetsHotpotBase) => ({ id: b.id, name: b.name_zh })));
+    
+    return activeBases;
   } catch (error) {
     console.error('Error fetching hotpot bases:', error);
     // Return fallback data if Google Sheets is not available
@@ -73,8 +82,10 @@ export const fetchReviews = async (): Promise<GoogleSheetsReview[]> => {
     const data = await response.json();
     const rows = data.values || [];
     
+    console.log('📊 从Google Sheets读取到的评价数据:', rows);
+    
     // Skip header row
-    return rows.slice(1).map((row: string[]) => ({
+    const allReviews = rows.slice(1).map((row: string[]) => ({
       id: row[0] || '',
       userName: row[1] || '',
       userPhone: row[2] || '',
@@ -83,6 +94,14 @@ export const fetchReviews = async (): Promise<GoogleSheetsReview[]> => {
       timestamp: parseInt(row[5]) || Date.now(),
       hotpotBaseId: row[6] || ''
     }));
+    
+    console.log('✅ 总评价数量:', allReviews.length);
+    console.log('📋 评价中的锅底ID分布:', allReviews.reduce((acc: Record<string, number>, review: GoogleSheetsReview) => {
+      acc[review.hotpotBaseId] = (acc[review.hotpotBaseId] || 0) + 1;
+      return acc;
+    }, {}));
+    
+    return allReviews;
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return [];

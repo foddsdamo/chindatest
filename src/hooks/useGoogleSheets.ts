@@ -22,9 +22,22 @@ export const useGoogleSheets = () => {
         fetchReviews()
       ]);
       
+      console.log('🔄 开始处理数据关联...');
+      console.log('📊 锅底数据:', basesData);
+      console.log('📊 评价数据:', reviewsData);
+      
+      // Get valid hotpot base IDs
+      const validBaseIds = new Set(basesData.map(base => base.id));
+      console.log('✅ 有效的锅底ID:', Array.from(validBaseIds));
+      
+      // Filter reviews to only include those with valid hotpot base IDs
+      const validReviews = reviewsData.filter(review => validBaseIds.has(review.hotpotBaseId));
+      console.log('✅ 有效评价数量:', validReviews.length);
+      console.log('❌ 无效评价数量:', reviewsData.length - validReviews.length);
+      
       // Transform Google Sheets data to app format
       const transformedBases: HotpotBase[] = basesData.map((base: GoogleSheetsHotpotBase) => {
-        const baseReviews = reviewsData
+        const baseReviews = validReviews
           .filter((review: GoogleSheetsReview) => review.hotpotBaseId === base.id)
           .map((review: GoogleSheetsReview) => ({
             id: review.id,
@@ -42,6 +55,8 @@ export const useGoogleSheets = () => {
           ? baseReviews.reduce((sum, review) => sum + review.rating, 0) / totalRatings 
           : 0;
         
+        console.log(`📋 锅底 ${base.name_zh} (${base.id}): ${totalRatings} 条评价, 平均评分 ${averageRating.toFixed(1)}`);
+        
         return {
           id: base.id,
           name: {
@@ -54,6 +69,13 @@ export const useGoogleSheets = () => {
           reviews: baseReviews
         };
       });
+      
+      console.log('✅ 最终处理结果:', transformedBases.map(b => ({ 
+        id: b.id, 
+        name: b.name.zh, 
+        totalRatings: b.totalRatings, 
+        averageRating: b.averageRating 
+      })));
       
       setHotpotBases(transformedBases);
     } catch (err) {
