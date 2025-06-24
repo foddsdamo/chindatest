@@ -1,4 +1,4 @@
 # Google Sheets API Configuration
-VITE_GOOGLE_SHEETS_API_KEY=AIzaSyBH-EU78R0Goti7u1c9ffDSpZANSfIiLYg
+VITE_GOOGLE_SHEETS_API_KEY=AIzaSyAJLzu7b20NUBgAeQ0ezKDUWCIAyfWe6tk
 VITE_GOOGLE_SPREADSHEET_ID=1M3No1PW2kZlx2soy2RWcapQ0FxowX5o5RmIqkUteCg0
-VITE_GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/s/AKfycbykEbyACBMs2QGr-l29eYphu8pyQgrHhfy7hsox1xx68ZgsAuS7i5iQwm7oo4Q6j3hvPA/exec
+VITE_GOOGLE_APPS_SCRIPT_URL=http://localhost:3000/api/google-sheets-proxy

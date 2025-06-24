@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   try {
     // 你的 Apps Script Web App URL
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyhA71x0PIVZ3-R4UfbnJKewVR3n-P5sBLl5Nbs7TRuEx-RY_UUqb6WHk1T1KgJ2ZPrZA/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwSlgqj4XmcdwKVUSGQ8m-nq5oMUhPwYUMWg0bxOnWHmKM8iamvCRuTZNsjJPhwiXsV8A/exec';
 
     // 直接转发 body 到 Apps Script
     const googleRes = await fetch(scriptUrl, {

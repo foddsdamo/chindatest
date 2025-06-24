@@ -1,136 +1,129 @@
-// 详细调试Google Sheets连接问题
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// Google Sheets 诊断脚本
+const GOOGLE_SHEETS_API_KEY = 'AIzaSyBH-EU78R0Goti7u1c9ffDSpZANSfIiLYg';
+const SPREADSHEET_ID = '1M3No1PW2kZlx2soy2RWcapQ0FxowX5o5RmIqkUteCg0';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+async function diagnoseGoogleSheets() {
+  console.log('🔍 Google Sheets 诊断报告\n');
+  console.log('📋 配置信息:');
+  console.log(`   API Key: ${GOOGLE_SHEETS_API_KEY.substring(0, 20)}...`);
+  console.log(`   Spreadsheet ID: ${SPREADSHEET_ID}`);
+  console.log(`   Spreadsheet URL: https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit\n`);
 
-function loadEnv() {
-  const envPath = path.join(__dirname, '.env');
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const envVars = {};
-    
-    envContent.split('\n').forEach(line => {
-      const [key, value] = line.split('=');
-      if (key && value) {
-        envVars[key.trim()] = value.trim();
-      }
-    });
-    
-    return envVars;
-  }
-  return {};
-}
-
-async function debugGoogleSheets() {
-  const env = loadEnv();
-  
-  console.log('🔍 详细调试Google Sheets连接...\n');
-  
-  console.log('📋 环境变量检查:');
-  console.log('API Key:', env.VITE_GOOGLE_SHEETS_API_KEY ? '✅ 已设置' : '❌ 未设置');
-  console.log('Spreadsheet ID:', env.VITE_GOOGLE_SPREADSHEET_ID ? '✅ 已设置' : '❌ 未设置');
-  console.log('Apps Script URL:', env.VITE_GOOGLE_APPS_SCRIPT_URL ? '✅ 已设置' : '❌ 未设置');
-  
-  if (!env.VITE_GOOGLE_SHEETS_API_KEY || !env.VITE_GOOGLE_SPREADSHEET_ID) {
-    console.log('\n❌ 环境变量配置不完整！');
-    return;
-  }
-  
-  console.log('\n🔗 测试API连接...');
-  
-  // 测试1: 检查表格是否存在
-  console.log('\n1️⃣ 检查表格是否存在...');
+  // 测试1: 检查API密钥是否有效
+  console.log('🧪 测试1: API密钥有效性');
   try {
-    const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.VITE_GOOGLE_SPREADSHEET_ID}?key=${env.VITE_GOOGLE_SHEETS_API_KEY}`;
-    const metadataResponse = await fetch(metadataUrl);
+    const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?key=${GOOGLE_SHEETS_API_KEY}`;
+    const response = await fetch(testUrl);
     
-    if (metadataResponse.ok) {
-      const metadata = await metadataResponse.json();
-      console.log('✅ 表格存在');
-      console.log('   标题:', metadata.properties?.title || '未知');
-      console.log('   工作表数量:', metadata.sheets?.length || 0);
+    if (response.ok) {
+      console.log('✅ API密钥有效，可以访问表格元数据');
+    } else if (response.status === 403) {
+      console.log('❌ 403错误 - 权限问题');
+      console.log('💡 解决方案:');
+      console.log('   1. 确保Google Sheets表格已公开');
+      console.log('   2. 检查API密钥是否有Google Sheets API权限');
+      console.log('   3. 确保Google Sheets API已启用');
+    } else if (response.status === 404) {
+      console.log('❌ 404错误 - 表格不存在或ID错误');
+    } else {
+      console.log(`❌ 其他错误: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    console.log('❌ 网络错误:', error.message);
+  }
+
+  // 测试2: 尝试读取锅底数据
+  console.log('\n🧪 测试2: 读取锅底数据');
+  try {
+    const basesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HotpotBases?key=${GOOGLE_SHEETS_API_KEY}`;
+    const response = await fetch(basesUrl);
+    
+    if (response.ok) {
+      const data = await response.json();
+      const rows = data.values || [];
+      console.log(`✅ 成功读取锅底数据，共 ${rows.length} 行`);
       
-      if (metadata.sheets) {
-        console.log('   工作表列表:');
-        metadata.sheets.forEach((sheet, index) => {
-          console.log(`     ${index + 1}. ${sheet.properties.title}`);
+      if (rows.length > 1) {
+        console.log('📋 数据预览:');
+        rows.slice(1, 3).forEach((row, index) => {
+          console.log(`   行${index + 2}: ${row.join(' | ')}`);
         });
       }
     } else {
-      console.log('❌ 表格不存在或无法访问');
-      console.log('   状态码:', metadataResponse.status);
-      console.log('   错误信息:', metadataResponse.statusText);
-      
-      const errorText = await metadataResponse.text();
-      console.log('   详细错误:', errorText);
+      console.log(`❌ 读取失败: ${response.status} ${response.statusText}`);
+      if (response.status === 403) {
+        console.log('💡 403错误可能原因:');
+        console.log('   - 表格未公开');
+        console.log('   - API密钥权限不足');
+        console.log('   - Google Sheets API未启用');
+      }
     }
   } catch (error) {
-    console.log('❌ 检查表格时出错:', error.message);
+    console.log('❌ 读取错误:', error.message);
   }
-  
-  // 测试2: 尝试读取HotpotBases工作表
-  console.log('\n2️⃣ 测试读取HotpotBases工作表...');
+
+  // 测试3: 尝试读取评价数据
+  console.log('\n🧪 测试3: 读取评价数据');
   try {
-    const basesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.VITE_GOOGLE_SPREADSHEET_ID}/values/HotpotBases?key=${env.VITE_GOOGLE_SHEETS_API_KEY}`;
-    const basesResponse = await fetch(basesUrl);
+    const reviewsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Reviews?key=${GOOGLE_SHEETS_API_KEY}`;
+    const response = await fetch(reviewsUrl);
     
-    if (basesResponse.ok) {
-      const basesData = await basesResponse.json();
-      console.log('✅ HotpotBases工作表读取成功');
-      console.log('   数据行数:', basesData.values ? basesData.values.length : 0);
+    if (response.ok) {
+      const data = await response.json();
+      const rows = data.values || [];
+      console.log(`✅ 成功读取评价数据，共 ${rows.length} 行`);
       
-      if (basesData.values && basesData.values.length > 0) {
-        console.log('   第一行数据:', basesData.values[0]);
-        if (basesData.values.length > 1) {
-          console.log('   第二行数据:', basesData.values[1]);
-        }
+      if (rows.length > 1) {
+        console.log('📋 数据预览:');
+        rows.slice(1, 3).forEach((row, index) => {
+          console.log(`   行${index + 2}: ${row.join(' | ')}`);
+        });
       }
     } else {
-      console.log('❌ HotpotBases工作表读取失败');
-      console.log('   状态码:', basesResponse.status);
-      console.log('   错误信息:', basesResponse.statusText);
-      
-      const errorText = await basesResponse.text();
-      console.log('   详细错误:', errorText);
+      console.log(`❌ 读取失败: ${response.status} ${response.statusText}`);
     }
   } catch (error) {
-    console.log('❌ 读取HotpotBases时出错:', error.message);
+    console.log('❌ 读取错误:', error.message);
   }
-  
-  // 测试3: 尝试读取Reviews工作表
-  console.log('\n3️⃣ 测试读取Reviews工作表...');
+
+  // 测试4: 检查工作表是否存在
+  console.log('\n🧪 测试4: 检查工作表');
   try {
-    const reviewsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.VITE_GOOGLE_SPREADSHEET_ID}/values/Reviews?key=${env.VITE_GOOGLE_SHEETS_API_KEY}`;
-    const reviewsResponse = await fetch(reviewsUrl);
+    const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?key=${GOOGLE_SHEETS_API_KEY}`;
+    const response = await fetch(sheetsUrl);
     
-    if (reviewsResponse.ok) {
-      const reviewsData = await reviewsResponse.json();
-      console.log('✅ Reviews工作表读取成功');
-      console.log('   数据行数:', reviewsData.values ? reviewsData.values.length : 0);
+    if (response.ok) {
+      const data = await response.json();
+      const sheets = data.sheets || [];
+      const sheetNames = sheets.map(sheet => sheet.properties.title);
       
-      if (reviewsData.values && reviewsData.values.length > 0) {
-        console.log('   第一行数据:', reviewsData.values[0]);
+      console.log('✅ 表格中的工作表:');
+      sheetNames.forEach(name => {
+        console.log(`   - ${name}`);
+      });
+      
+      const requiredSheets = ['HotpotBases', 'Reviews'];
+      const missingSheets = requiredSheets.filter(name => !sheetNames.includes(name));
+      
+      if (missingSheets.length > 0) {
+        console.log('❌ 缺少必需的工作表:', missingSheets.join(', '));
+      } else {
+        console.log('✅ 所有必需的工作表都存在');
       }
     } else {
-      console.log('❌ Reviews工作表读取失败');
-      console.log('   状态码:', reviewsResponse.status);
-      console.log('   错误信息:', reviewsResponse.statusText);
-      
-      const errorText = await reviewsResponse.text();
-      console.log('   详细错误:', errorText);
+      console.log(`❌ 获取工作表信息失败: ${response.status}`);
     }
   } catch (error) {
-    console.log('❌ 读取Reviews时出错:', error.message);
+    console.log('❌ 检查工作表错误:', error.message);
   }
-  
-  console.log('\n📋 建议解决方案:');
-  console.log('1. 确保Google Sheets表格已设置为"任何人都可以查看"');
-  console.log('2. 检查工作表名称是否为"HotpotBases"和"Reviews"（区分大小写）');
-  console.log('3. 确保API密钥有正确的权限设置');
-  console.log('4. 检查Google Cloud Console中的API配额');
+
+  console.log('\n📝 诊断完成！');
+  console.log('\n🔧 如果遇到403错误，请按以下步骤解决:');
+  console.log('1. 打开Google Sheets表格');
+  console.log('2. 点击右上角的"共享"按钮');
+  console.log('3. 选择"任何人都可以查看"');
+  console.log('4. 点击"完成"');
+  console.log('5. 重新运行此诊断脚本');
 }
 
-debugGoogleSheets().catch(console.error); 
+diagnoseGoogleSheets(); 

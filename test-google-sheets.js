@@ -101,4 +101,109 @@ async function testGoogleSheetsConnection() {
 }
 
 // 运行测试
-testGoogleSheetsConnection().catch(console.error); 
+testGoogleSheetsConnection().catch(console.error);
+
+// 测试Google Sheets API集成
+const GOOGLE_SHEETS_API_KEY = 'AIzaSyBH-EU78R0Goti7u1c9ffDSpZANSfIiLYg';
+const SPREADSHEET_ID = '1M3No1PW2kZlx2soy2RWcapQ0FxowX5o5RmIqkUteCg0';
+
+const HOTPOT_BASES_SHEET = 'HotpotBases';
+const REVIEWS_SHEET = 'Reviews';
+
+async function testGoogleSheetsAPI() {
+  console.log('🧪 开始测试Google Sheets API集成...\n');
+
+  try {
+    // 测试锅底数据获取
+    console.log('📊 测试获取锅底数据...');
+    const basesResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${HOTPOT_BASES_SHEET}?key=${GOOGLE_SHEETS_API_KEY}`
+    );
+    
+    if (!basesResponse.ok) {
+      throw new Error(`获取锅底数据失败: ${basesResponse.status} ${basesResponse.statusText}`);
+    }
+    
+    const basesData = await basesResponse.json();
+    const basesRows = basesData.values || [];
+    
+    console.log(`✅ 成功获取锅底数据，共 ${basesRows.length} 行`);
+    console.log('📋 锅底数据预览:');
+    basesRows.slice(0, 3).forEach((row, index) => {
+      console.log(`   ${index + 1}. ${row.join(' | ')}`);
+    });
+
+    // 测试评价数据获取
+    console.log('\n📊 测试获取评价数据...');
+    const reviewsResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${REVIEWS_SHEET}?key=${GOOGLE_SHEETS_API_KEY}`
+    );
+    
+    if (!reviewsResponse.ok) {
+      throw new Error(`获取评价数据失败: ${reviewsResponse.status} ${reviewsResponse.statusText}`);
+    }
+    
+    const reviewsData = await reviewsResponse.json();
+    const reviewsRows = reviewsData.values || [];
+    
+    console.log(`✅ 成功获取评价数据，共 ${reviewsRows.length} 行`);
+    console.log('📋 评价数据预览:');
+    reviewsRows.slice(0, 3).forEach((row, index) => {
+      console.log(`   ${index + 1}. ${row.join(' | ')}`);
+    });
+
+    // 分析数据关联
+    console.log('\n🔗 分析数据关联...');
+    const validBaseIds = new Set(basesRows.slice(1).map(row => row[0]));
+    const validReviews = reviewsRows.slice(1).filter(row => validBaseIds.has(row[6]));
+    
+    console.log(`✅ 有效锅底ID数量: ${validBaseIds.size}`);
+    console.log(`✅ 有效评价数量: ${validReviews.length}`);
+    console.log(`❌ 无效评价数量: ${reviewsRows.length - 1 - validReviews.length}`);
+
+    // 计算排行榜数据
+    console.log('\n🏆 计算排行榜数据...');
+    const baseStats = {};
+    
+    validReviews.forEach(review => {
+      const baseId = review[6];
+      if (!baseStats[baseId]) {
+        baseStats[baseId] = { ratings: [], total: 0, sum: 0 };
+      }
+      const rating = parseInt(review[3]) || 0;
+      baseStats[baseId].ratings.push(rating);
+      baseStats[baseId].total++;
+      baseStats[baseId].sum += rating;
+    });
+
+    const leaderboard = Object.entries(baseStats)
+      .map(([baseId, stats]) => ({
+        id: baseId,
+        averageRating: stats.total > 0 ? (stats.sum / stats.total).toFixed(1) : '0.0',
+        totalRatings: stats.total
+      }))
+      .sort((a, b) => parseFloat(b.averageRating) - parseFloat(a.averageRating));
+
+    console.log('🏆 排行榜结果:');
+    leaderboard.forEach((base, index) => {
+      console.log(`   ${index + 1}. ${base.id} - 评分: ${base.averageRating} (${base.totalRatings} 条评价)`);
+    });
+
+    console.log('\n✅ Google Sheets API集成测试完成！');
+    console.log('📝 建议:');
+    console.log('   1. 确保Google Sheets文档已公开或API密钥有访问权限');
+    console.log('   2. 检查工作表名称是否正确 (HotpotBases, Reviews)');
+    console.log('   3. 验证数据格式是否符合预期');
+
+  } catch (error) {
+    console.error('❌ 测试失败:', error.message);
+    console.log('\n🔧 故障排除建议:');
+    console.log('   1. 检查API密钥是否正确');
+    console.log('   2. 检查Spreadsheet ID是否正确');
+    console.log('   3. 确保Google Sheets API已启用');
+    console.log('   4. 检查网络连接');
+  }
+}
+
+// 运行测试
+testGoogleSheetsAPI(); 
